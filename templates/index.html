@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width-device=width, initial-scale=1.0">
+        <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
+        <title>{{ name }}'s Watchlist</title>
+    </head>
+    <body>
+        <h2>
+            <img src="{{ url_for('static', filename='images/avatar.png')}}" alt="avatar" class="avatar">
+            <p>{{ name }}'s Watchlist</p>
+        </h2>
+        <p>{{ movies | length }}'s Titles</p>
+        <ul class="movie-list">
+            {% for movie in movies %}
+            <li>{{ movie.title }} - {{ movie.year }}</li>
+            {% endfor %}
+        </ul>
+        <img src="{{ url_for('static', filename='images/totoro.gif')}}" alt="totoro" class="totoro">
+        <footer><small>&copy; 2025 <a href="http://helloflask.com/totoro.gif">Naive</a></small></footer>
+    </body>
+</html>
