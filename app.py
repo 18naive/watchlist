@@ -1,7 +1,7 @@
 import os, sys, click
-from flask import Flask, render_template, url_for
+from flask import Flask, render_template, url_for, request, redirect, flash
 from flask_sqlalchemy import SQLAlchemy 
-from markupsafe import escape
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
@@ -14,10 +14,32 @@ else:
 
 app.config['SQLALCHEMY_DATABASE_URI'] = prefix + os.path.join(app.root_path, 'data.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'dev'
 
 db = SQLAlchemy(app)
 
-# register command tha initial database.
+# manage tables by class.
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String(20))
+    username = db.Column(db.String(20))
+    password = db.Column(db.String(128))
+
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+
+    def validate_password(self, password):
+        return check_password_hash(self.password, password)
+    
+
+
+class Movie(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    title = db.Column(db.String(20))
+    year = db.Column(db.String(4))
+
+
+# register command that initial database.
 @app.cli.command()
 @click.option('--drop', is_flag=True, help='Create after drop.')
 def init_db(drop):
@@ -27,17 +49,29 @@ def init_db(drop):
     db.create_all()
     click.echo('Initialized database.')
 
-# manage tables by class.
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key = True)
-    name = db.Column(db.String(20))
 
-class Movie(db.Model):
-    id = db.Column(db.Integer, primary_key = True)
-    title = db.Column(db.String(20))
-    year = db.Column(db.String(4))
+# create user.
+@app.cli.command()
+@click.option('--username', prompt=True, help='The username used to login.')
+@click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True, help='The password used to login.')
+def admin(username, password):
+    """Create """
+    user = User.query.first()
+    if user:
+        click.echo('Update user...')
+        user.username = username
+        user.set_password(password)
+    else:
+        click.echo('Creat user...')
+        user = User(username=username, name='Admin')
+        user.set_password(password)
+        db.session.add(user)
+    db.session.commit()
+    user = User.query.first()
+    click.echo('Done.')
 
-# register command tha generate fake data.
+
+# register command that generate fake data.
 @app.cli.command()
 def forge():
     """Generate fake data."""
@@ -65,33 +99,60 @@ def forge():
     db.session.commit()
     click.echo('Done.')
 
-# inject avariable
+
+# inject variable
 @app.context_processor
 def inject_user():
     user = User.query.first()
     return dict(user=user)
+
 
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
 
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    """Display & create data."""
+    if request.method == 'POST':
+        title = request.form.get('title')
+        year = request.form.get('year')
+        if not title or not year or len(title) > 60 or len(year) != 4:
+            flash('Invalid input.')
+            return redirect(url_for('index'))
+        movie = Movie(title=title, year=year)
+        db.session.add(movie)
+        db.session.commit()
+        flash('Item created successfully.')
+        return redirect(url_for('index'))
+    # GET
     movies = Movie.query.all()
     return render_template('index.html', movies=movies)
 
-@app.route('/home/<name>')
-def hello(name:str):
-    return f'<h1>Hello, {escape(name)}!</h1>'
+
+@app.route('/movie/edit/<int:movie_id>', methods=['GET', 'POST'])
+def edit(movie_id):
+    movie = Movie.query.get_or_404(movie_id)
+    if request.method == 'POST':
+        title = request.form.get('title')
+        year = request.form.get('year')
+        if not title or not year or len(title) > 60 or len(year) != 4:
+            flash('Invalid input.')
+            return redirect(url_for('edit', movie_id=movie_id))
+        movie.title = title
+        movie.year = year
+        db.session.commit()
+        flash('Item updated successfully.')
+        return redirect(url_for('index'))
+    # GET
+    return render_template('edit.html', movie=movie)
 
 
-@app.route('/test')
-def url_test():
-    print(url_for('home'))
-
-    print(url_for('home', name='naive'))  
-
-    print(url_for('url_test', age=2))
-    
-    return '<h1>Test page.</h1>'
+@app.route('/movie/delete/<int:movie_id>', methods=['POST'])
+def delete(movie_id):
+    movie = Movie.query.get_or_404(movie_id)
+    db.session.delete(movie)
+    db.session.commit()
+    flash('Item deleted successfully.')
+    return redirect(url_for('index'))

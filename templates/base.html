@@ -9,9 +9,12 @@
         {% endblock %}
     </head>
     <body>
+        {% for message in get_flashed_messages() %}
+        <div class="alert">{{ message }}</div>
+        {% endfor %}
         <h2>
             <img src="{{url_for('static', filename='images/avatar.png')}}" alt="avatar" class="avatar">
-            <span>{{ user.name }}'s Watchlist</span>
+            <span>{{ user.username }}'s Watchlist</span>
         </h2>
         <nav>
             <ul>
