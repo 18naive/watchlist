@@ -1,6 +1,6 @@
 import os, sys, click
 from flask import Flask, render_template, url_for, request, redirect, flash
-from flask_sqlalchemy import SQLAlchemy 
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import  LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
@@ -26,6 +26,9 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(20))
     password = db.Column(db.String(128))
 
+    def __repr__(self):
+        return f'<User {self.username}>'
+
     def set_password(self, password):
         self.password = generate_password_hash(password)
 
@@ -39,13 +42,16 @@ class Movie(db.Model):
     title = db.Column(db.String(20))
     year = db.Column(db.String(4))
 
+    def __repr__(self):
+        return f'<Movie {self.title}>'
+
 
 login_manager = LoginManager(app)
 
 # load user
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 login_manager.login_view = 'login'
 
@@ -55,9 +61,10 @@ login_manager.login_view = 'login'
 @click.option('--drop', is_flag=True, help='Create after drop.')
 def init_db(drop):
     """Initialize the database."""
-    if drop:
-        db.drop_all()
-    db.create_all()
+    with app.app_context():
+        if drop:
+            db.drop_all()
+        db.create_all()
     click.echo('Initialized database.')
 
 
@@ -67,18 +74,20 @@ def init_db(drop):
 @click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True, help='The password used to login.')
 def admin(username, password):
     """Create """
-    user = User.query.first()
+    with app.app_context():
+        db.create_all()
+    user = db.session.scalar(db.select(User).limit(1))
     if user:
-        click.echo('Update user...')
+        click.echo('Updating user...')
         user.username = username
         user.set_password(password)
     else:
-        click.echo('Creat user...')
+        click.echo('Creating user...')
         user = User(username=username, name='Admin')
         user.set_password(password)
         db.session.add(user)
     db.session.commit()
-    user = User.query.first()
+
     click.echo('Done.')
 
 
@@ -86,7 +95,8 @@ def admin(username, password):
 @app.cli.command()
 def forge():
     """Generate fake data."""
-    db.create_all()
+    with app.app_context():
+        db.create_all()
 
     name = 'Naive'
     movies = [
@@ -114,12 +124,12 @@ def forge():
 # inject variable
 @app.context_processor
 def inject_user():
-    user = User.query.first()
+    user = db.session.scalar(db.select(User).limit(1))
     return dict(user=user)
 
 
 @app.errorhandler(404)
-def page_not_found():
+def page_not_found(e):
     return render_template('404.html'), 404
 
 
@@ -133,10 +143,10 @@ def login():
             flash('Invalid input.')
             return redirect(url_for('login'))
         
-        user = User.query.first()
+        user = db.session.scalar(db.select(User).limit(1))
         if username == user.username and user.validate_password(password):
             login_user(user)
-            flash('Login suscess.')
+            flash('Login success.')
             return redirect(url_for('index'))
         flash('Invalid username or password.')
         return redirect(url_for('login'))
@@ -153,7 +163,7 @@ def settings():
             return redirect(url_for('settings'))
         current_user.name = name
         db.session.commit()
-        flash('Setting updated successfully.')
+        flash('Settings updated successfully.')
         return redirect(url_for('index'))
 
     return render_template('settings.html')
@@ -163,7 +173,7 @@ def settings():
 @login_required
 def logout():
     logout_user()
-    flash('Godbye.')
+    flash('Goodbye.')
     return redirect(url_for('index'))
 
 
@@ -173,7 +183,7 @@ def index():
     """Display & create data."""
     if request.method == 'POST':
         if not current_user.is_authenticated:
-            return redirect(url_for('indx'))
+            return redirect(url_for('index'))
         title = request.form.get('title')
         year = request.form.get('year')
         if not title or not year or len(title) > 60 or len(year) != 4:
@@ -185,14 +195,14 @@ def index():
         flash('Item created successfully.')
         return redirect(url_for('index'))
     # GET
-    movies = Movie.query.all()
+    movies = db.session.scalars(db.select(Movie)).all()
     return render_template('index.html', movies=movies)
 
 
 @app.route('/movie/edit/<int:movie_id>', methods=['GET', 'POST'])
 @login_required
 def edit(movie_id):
-    movie = Movie.query.get_or_404(movie_id)
+    movie = db.session.scalar(db.select(Movie).where(Movie.id == movie_id))
     if request.method == 'POST':
         title = request.form.get('title')
         year = request.form.get('year')
@@ -211,8 +221,12 @@ def edit(movie_id):
 @app.route('/movie/delete/<int:movie_id>', methods=['POST'])
 @login_required
 def delete(movie_id):
-    movie = Movie.query.get_or_404(movie_id)
+    movie = db.session.scalar(db.select(Movie).where(Movie.id == movie_id))
     db.session.delete(movie)
     db.session.commit()
     flash('Item deleted successfully.')
     return redirect(url_for('index'))
+
+@app.route('/coverage')
+def coverage():
+    return render_template('index.html')
