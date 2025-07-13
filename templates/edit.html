@@ -1,16 +1,16 @@
 {% extends 'base.html'%}
 
 {% block content %}
-<h3>Edit item</h3>
-<form method="post">
-    <label>
-        <span>Title&nbsp;</span>
-        <input type="text" name="title" value="{{ movie.title}}" autocomplete="off" required>
-    </label>
-    <label>
-        <span>&nbsp;&nbsp;Year</span>
-        <input type="text" name="year" value="{{ movie.year }}" autocomplete="off" required>
-    </label>
-    <input type="submit" value="Update" class="btn">
-</form>
+    <h3>Edit item</h3>
+    <form method="post">
+        <label>
+            <span>Title&nbsp;</span>
+            <input type="text" name="title" value="{{ movie.title}}" autocomplete="off" required>
+        </label>
+        <label>
+            <span>&nbsp;&nbsp;Year</span>
+            <input type="text" name="year" value="{{ movie.year }}" autocomplete="off" required>
+        </label>
+        <input type="submit" value="Update" class="btn">
+    </form>
 {% endblock %}
