@@ -2,15 +2,15 @@
 <html>
     <head>
         {% block head %}
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
-            <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
         {% endblock %}
     </head>
     <body>
         {% for message in get_flashed_messages() %}
-            <div class="alert">{{ message }}</div>
+        <div class="alert">{{ message }}</div>
         {% endfor %}
         <h2>
             <img src="{{url_for('static', filename='images/avatar.png')}}" alt="avatar" class="avatar">
@@ -22,16 +22,16 @@
                     <a href="{{ url_for('index') }}">Home</a>
                 </li>
                 {% if current_user.is_authenticated %}
-                    <li>
-                        <a href="{{ url_for('settings')}}">Settings</a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('logout')}}">Logout</a>
-                    </li>
+                <li>
+                    <a href="{{ url_for('settings')}}">Settings</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('logout')}}">Logout</a>
+                </li>
                 {% else %}
-                    <li>
-                        <a href="{{ url_for('login') }}">Login</a>
-                    </li>
+                <li>
+                    <a href="{{ url_for('login') }}">Login</a>
+                </li>
                 {% endif %}
             </ul>
         </nav>

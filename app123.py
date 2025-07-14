@@ -226,7 +226,3 @@ def delete(movie_id):
     db.session.commit()
     flash('Item deleted successfully.')
     return redirect(url_for('index'))
-
-@app.route('/coverage')
-def coverage():
-    return render_template('index.html')
